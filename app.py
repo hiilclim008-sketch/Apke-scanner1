@@ -3,7 +3,7 @@ import io
 import threading
 import telebot
 from telebot import types
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 
 from config import (
@@ -48,14 +48,14 @@ def api_scan():
     result = scan_file(file_bytes, filename)
     increment_scan_count()
 
-    # Attach ready-to-download reports (optional convenience)
+    # Attach ready-to-download reports
     result["report_txt"] = generate_txt_report(result)
     result["report_json"] = generate_json_report(result)
 
     return jsonify(result)
 
 
-# ─────────────── Telegram Bot ───────────────
+# ─────────────── Telegram Bot Handlers ───────────────
 @bot.message_handler(commands=["start"])
 def cmd_start(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
@@ -157,7 +157,6 @@ def handle_document(message):
 
 @bot.message_handler(func=lambda m: True, content_types=["text"])
 def handle_text(message):
-    # Simple link check
     text = message.text.strip()
     if text.startswith("http://") or text.startswith("https://"):
         bot.reply_to(
@@ -169,18 +168,18 @@ def handle_text(message):
         bot.reply_to(message, "Send an APK/HTML file or use /start")
 
 
-# ─────────────── Run both services ───────────────
+# ─────────────── Bot runner (background) ───────────────
 def run_bot():
     print("🤖 Telegram bot polling started…")
     bot.infinity_polling(timeout=60, long_polling_timeout=30)
 
 
+# ─────────────── Main entry point ───────────────
 if __name__ == "__main__":
-    # Start bot in background thread
-    t = threading.Thread(target=run_bot, daemon=True)
-    t.start()
+    # Start Telegram bot in a background daemon thread
+    threading.Thread(target=run_bot, daemon=True).start()
 
-    # Flask (Render will set PORT)
+    # Start Flask on the main thread (binds to Render's PORT immediately)
     port = int(os.environ.get("PORT", 10000))
     print(f"🌐 Flask listening on 0.0.0.0:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
