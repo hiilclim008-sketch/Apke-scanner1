@@ -4,6 +4,7 @@ import threading
 import telebot
 from telebot import types
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 from config import (
@@ -14,9 +15,10 @@ from admin import is_admin, get_stats, increment_scan_count
 from scanner import scan_file, generate_txt_report, generate_json_report
 
 # ──────────────────────────────────────────────
-# Flask app
+# Flask app + CORS
 # ──────────────────────────────────────────────
 app = Flask(__name__)
+CORS(app)  # Allow requests from GitHub Pages / any origin
 app.config["MAX_CONTENT_LENGTH"] = MAX_WEB_FILE_MB * 1024 * 1024
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
@@ -170,6 +172,8 @@ def handle_text(message):
 
 # ─────────────── Bot runner (background) ───────────────
 def run_bot():
+    print("🤖 Removing any existing webhook…")
+    bot.remove_webhook()          # ← fixes 409 Conflict
     print("🤖 Telegram bot polling started…")
     bot.infinity_polling(timeout=60, long_polling_timeout=30)
 
